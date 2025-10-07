@@ -5,9 +5,9 @@ from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_community.vectorstores import FAISS  # 🔁 جایگزینی Chroma با FAISS
+from langchain_community.vectorstores import FAISS  
 
-# مسیر دیتابیس ذخیره‌شده
+# root path
 VECTOR_DIR = "vectorstore"
 FAISS_INDEX_PATH = os.path.join(VECTOR_DIR, "faiss_index")
 
@@ -32,7 +32,7 @@ def get_rag_chain():
         vector_store = FAISS.load_local(FAISS_INDEX_PATH, embeddings, allow_dangerous_deserialization=True)# 🔁 لود FAISS
         retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-        # 📝 پرامپت RAG به زبان فارسی
+        
         rag_prompt = ChatPromptTemplate.from_template(
             """براساس اطلاعات زیر پاسخ کاربر را بده. پاسخ‌ها دقیق و به فارسی باشند.
 Context: {context}
@@ -43,7 +43,7 @@ Answer:"""
         llm = ChatOpenAI(model=os.getenv("MODEL", "gpt-4o-mini"), temperature=0)
         document_chain = create_stuff_documents_chain(llm, rag_prompt)
 
-        # 🔗 ساخت زنجیره RAG
+        # 🔗 RAG chain
         chain = create_retrieval_chain(retriever, document_chain)
         logger.info("RAG chain loaded and cached from %s", FAISS_INDEX_PATH)
         return chain

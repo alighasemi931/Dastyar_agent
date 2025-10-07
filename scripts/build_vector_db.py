@@ -4,23 +4,24 @@ from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.schema import Document  # fix import path for Document
-
-# اضافه کردن مسیر پروژه برای import
+from dotenv import load_dotenv
+load_dotenv()
+# add project directory to sys.path so local modules can be imported
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from databases.database import SessionLocal
 from models.model import IPHONE_PRODUCTS, WATCH_PRODUCTS
 
 load_dotenv()
 
-# مسیر ذخیره وکتور دیتابیس
-VECTOR_DIR = "vectorstore"
+# directory where the vector database will be saved
+VECTOR_DIR = os.getenv("VECTOR_DIR", "vectorstore")
 FAISS_INDEX_PATH = os.path.join(VECTOR_DIR, "faiss_index")
 
 
 def build_vector_db():
     db = SessionLocal()
     try:
-        # --- گرفتن محصولات ---
+        # --- fetch products ---
         iphones = db.query(IPHONE_PRODUCTS).all()
         watches = db.query(WATCH_PRODUCTS).all()
 
@@ -30,7 +31,7 @@ def build_vector_db():
 
         documents = []
 
-        # --- پردازش آیفون‌ها ---
+        # --- process iPhones ---
         for p in iphones:
             colors = [c.title for c in p.colors] if p.colors else []
             color_text = ", ".join(colors) if colors else "Unknown"
@@ -49,17 +50,17 @@ def build_vector_db():
                 ),
                 metadata={
                     "id": p.id,
-                    "Price" : price_text,
-                    "Colors" : color_text,
-                    "Specifications" : specs_text,
+                    "Price": price_text,
+                    "Colors": color_text,
+                    "Specifications": specs_text,
                     "product_id": p.product_id,
-                    "category": "watch",
-                    "url": p.relative_url
-            }
+                    "category": "iphone",
+                    "url": p.relative_url,
+                },
             )
             documents.append(doc)
 
-        # --- پردازش ساعت‌ها ---
+        # --- process Watches ---
         for p in watches:
             colors = [c.title for c in p.colors] if p.colors else []
             color_text = ", ".join(colors) if colors else "Unknown"
@@ -76,28 +77,28 @@ def build_vector_db():
                     f"Specifications: {specs_text}\n"
                     f"Reviews: {reviews_text}"
                 ),
-               metadata={
+                metadata={
                     "id": p.id,
-                    "Price" : price_text,
-                    "Colors" : color_text,
-                    "Specifications" : specs_text,
+                    "Price": price_text,
+                    "Colors": color_text,
+                    "Specifications": specs_text,
                     "product_id": p.product_id,
                     "category": "watch",
-                    "url": p.relative_url
-            }
+                    "url": p.relative_url,
+                },
             )
             documents.append(doc)
 
-        # --- ساخت embedding ---
+        # --- create embeddings ---
         embeddings = OpenAIEmbeddings(api_key=os.getenv("OPENAI_API_KEY"))
 
-        # --- ساخت وکتور دیتابیس با FAISS ---
+        # --- build vector DB with FAISS ---
         vector_store = FAISS.from_documents(
             documents=documents,
-            embedding=embeddings
+            embedding=embeddings,
         )
 
-        # ذخیره در مسیر لوکال
+        # save to local path
         os.makedirs(VECTOR_DIR, exist_ok=True)
         vector_store.save_local(FAISS_INDEX_PATH)
 

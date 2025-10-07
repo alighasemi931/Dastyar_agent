@@ -1,4 +1,4 @@
-# scripts/fetch_full_product_data_orm.py
+# scripts/data_collector.py
 import requests
 import json
 import time
@@ -30,9 +30,9 @@ def build_readable_reviews(comments):
     for i, comment in enumerate(comments, 1):
         rate = comment.get("rate", "")
         body = comment.get("body", "").strip()
-        user_type = "🛒 خریدار" if comment.get("review_user_type") == "buyer" else "👤 کاربر"
-        lines.append(f"{i}. {user_type} | امتیاز: {rate}\n{body}\n")
-    return "\n".join(lines) if lines else "بدون نظر ثبت‌شده."
+        user_type = "🛒 Buyer" if comment.get("review_user_type") == "buyer" else "👤 User"
+        lines.append(f"{i}. {user_type} | Rating: {rate}\n{body}\n")
+    return "\n".join(lines) if lines else "No reviews."
 
 # ==========================
 # Check column existence in table
@@ -41,9 +41,9 @@ def ensure_column(model, column_name):
     inspector = inspect(engine)
     columns = [col["name"] for col in inspector.get_columns(model.__tablename__)]
     if column_name not in columns:
-        print(f"⚠️ ستون {column_name} در جدول {model.__tablename__} وجود ندارد.")
+        print(f"⚠️ Column {column_name} does not exist in table {model.__tablename__}.")
     else:
-        print(f"ℹ️ ستون {column_name} در جدول {model.__tablename__} موجود است.")
+        print(f"ℹ️ Column {column_name} exists in table {model.__tablename__}.")
 
 # ==========================
 # Collect products and colors
@@ -109,14 +109,14 @@ def fetch_and_store_products(api_url, product_model, color_model, max_pages=2):
                         session.add(color_model(product_id=pid, title=color_title))
             
             session.commit()
-            print(f"✅ صفحه {page} پردازش شد. محصولات اضافه‌شده: {total_added}")
+            print(f"✅ Page {page} processed. Products added: {total_added}")
             time.sleep(1)
 
         except Exception as e:
-            print(f"❌ خطا در صفحه {page}: {e}")
+            print(f"❌ Error on page {page}: {e}")
             session.rollback()
     session.close()
-    print(f"✨ جمع‌آوری محصولات و رنگ‌ها پایان یافت. مجموع محصولات جدید: {total_added}")
+    print(f"✨ Finished collecting products and colors. Total new products: {total_added}")
 
 # ==========================
 # Collect specifications and reviews
@@ -124,13 +124,13 @@ def fetch_and_store_products(api_url, product_model, color_model, max_pages=2):
 def fetch_full_product_data(product_model, color_model, details_api, reviews_api, delay_specs=1, delay_reviews=1, max_pages=2):
     session: Session = SessionLocal()
     products = session.query(product_model).all()
-    print(f"🔍 تعداد محصولات برای پردازش: {len(products)}")
+    print(f"🔍 Products to process: {len(products)}")
 
     for idx, product in enumerate(products, start=1):
         pid = product.product_id
-        print(f"\n({idx}/{len(products)}) پردازش محصول {pid} ...")
+        print(f"\nProcessing product {pid} ({idx}/{len(products)}) ...")
 
-    # Fetch product details
+        # Fetch product details
         try:
             r = requests.get(f"{details_api}{pid}/", headers=HEADERS, timeout=10)
             r.raise_for_status()
@@ -149,14 +149,14 @@ def fetch_full_product_data(product_model, color_model, details_api, reviews_api
             if specs and getattr(product, "specifications", None) in (None, ""):
                 product.specifications = json.dumps(specs, ensure_ascii=False)
                 session.commit()
-                print(f"✅ مشخصات ذخیره شد.")
+                print(f"✅ Specifications saved.")
             time.sleep(delay_specs)
 
         except Exception as e:
-            print(f"❌ خطا در دریافت جزئیات محصول {pid}: {e}")
+            print(f"❌ Error fetching details for product {pid}: {e}")
             session.rollback()
 
-    # Fetch reviews
+        # Fetch reviews
         try:
             all_comments = []
             for page in range(1, max_pages + 1):
@@ -171,14 +171,14 @@ def fetch_full_product_data(product_model, color_model, details_api, reviews_api
 
             product.reviews_text = build_readable_reviews(all_comments)
             session.commit()
-            print(f"💾 نظرات ذخیره شد ({len(all_comments)} نظر).")
+            print(f"💾 Reviews saved ({len(all_comments)} comments).")
             time.sleep(delay_reviews)
         except Exception as e:
-            print(f"❌ خطا در دریافت یا ذخیره نظرات محصول {pid}: {e}")
+            print(f"❌ Error fetching/saving reviews for product {pid}: {e}")
             session.rollback()
 
     session.close()
-    print("\n✨ عملیات کامل برای همه محصولات پایان یافت.")
+    print("\n✨ Completed operations for all products.")
 
 # ==========================
 # Direct execution
@@ -186,7 +186,7 @@ def fetch_full_product_data(product_model, color_model, details_api, reviews_api
 if __name__ == "__main__":
     # Create tables if they don't exist
     Base.metadata.create_all(engine)
-    print("✅ جدول‌ها ایجاد شدند (اگر وجود نداشتند).")
+    print("✅ Tables created (if they did not exist).")
 
     # Check required columns
     ensure_column(IPHONE_PRODUCTS, "specifications")
@@ -195,15 +195,15 @@ if __name__ == "__main__":
     ensure_column(WATCH_PRODUCTS, "reviews_text")
 
     # Collect products and colors
-    print("\n=== جمع‌آوری محصولات آیفون ===")
+    print("\n=== Collecting iPhone products ===")
     fetch_and_store_products(IPHONE_API, IPHONE_PRODUCTS, IPHONE_COLORS, max_pages=2)
 
-    print("\n=== جمع‌آوری محصولات ساعت ===")
+    print("\n=== Collecting Watch products ===")
     fetch_and_store_products(WATCH_API, WATCH_PRODUCTS, WATCH_COLORS, max_pages=2)
 
     # Fetch specifications and reviews
-    print("\n=== پردازش آیفون‌ها ===")
+    print("\n=== Processing iPhones ===")
     fetch_full_product_data(IPHONE_PRODUCTS, IPHONE_COLORS, IPHONE_DETAILS_API, IPHONE_REVIEWS_API)
 
-    print("\n=== پردازش ساعت‌ها ===")
+    print("\n=== Processing Watches ===")
     fetch_full_product_data(WATCH_PRODUCTS, WATCH_COLORS, WATCH_DETAILS_API, WATCH_REVIEWS_API)

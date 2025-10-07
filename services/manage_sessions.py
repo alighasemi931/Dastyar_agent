@@ -1,4 +1,3 @@
-# 
 # services/session_orm.py
 import uuid
 import os
@@ -18,12 +17,12 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def init_db():
-    """ایجاد جداول دیتابیس (در صورت عدم وجود)."""
+    """Create database tables (if they do not exist)."""
     Base.metadata.create_all(bind=engine)
 
 
 def get_or_create_session(user_context='creator') -> str:
-    """ساخت یا بازیابی یک Session جدید."""
+    """Create (or retrieve) a new session and return its ID."""
     db = SessionLocal()
     session_id = str(uuid.uuid4())
 
@@ -35,21 +34,21 @@ def get_or_create_session(user_context='creator') -> str:
 
 
 def save_message(session_id: str, sender_type: str, content: str):
-    """ذخیره یک پیام جدید."""
+    """Save a new message to the database."""
     db = SessionLocal()
     try:
         message = Message(session_id=session_id, sender_type=sender_type, content=content)
         db.add(message)
         db.commit()
     except Exception as e:
-        print(f"❌ خطای ذخیره پیام: {e}")
+        print(f"❌ Failed to save message: {e}")
         db.rollback()
     finally:
         db.close()
 
 
 def load_messages(session_id: str, limit: int = 10):
-    """بارگذاری پیام‌ها برای بازسازی تاریخچه چت (آخرین n پیام)."""
+    """Load messages to reconstruct chat history (last n messages)."""
     db = SessionLocal()
     messages = []
     try:
@@ -67,6 +66,6 @@ def load_messages(session_id: str, limit: int = 10):
 
 
 # -------------------------
-# اجرای اولیه
+# Initial run
 # -------------------------
 init_db()

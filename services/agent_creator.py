@@ -253,18 +253,18 @@ class RAGTool(BaseTool):
                 elif line.startswith("Reviews:"):
                     reviews_text = line.replace("Reviews:", "").strip()
 
-            # --- فیلترها ---
+      
             import re
             digits = re.sub(r"[^0-9]", "", price or "")
             price_val = int(digits) if digits else None
 
-            # فیلتر رنگ
+        
             if color and all(color.lower() not in c for c in colors):
                 continue
-            # فیلتر حداقل قیمت
+        
             if min_price and (not price_val or price_val < min_price):
                 continue
-            # فیلتر حداکثر قیمت
+            
             if max_price and (not price_val or price_val > max_price):
                 continue
 
