@@ -4,6 +4,7 @@ services:
     container_name: dastyar_agent_web
     ports:
       - "8000:8000"
+      - "8501:8501"
     volumes:
       - ./:/app:rw
       - ./data:/app/data

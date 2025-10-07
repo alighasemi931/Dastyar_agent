@@ -8,4 +8,4 @@ python scripts/data_collector.py
 python scripts/build_vector_db.py
 
 # 3. اجرای سرور
-exec uvicorn api_server:app --host 0.0.0.0 --port 8000
+python api_server.py
