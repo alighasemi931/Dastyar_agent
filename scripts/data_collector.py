@@ -23,7 +23,7 @@ IPHONE_REVIEWS_API = "https://api.digikala.com/v1/rate-review/products/"
 WATCH_REVIEWS_API = "https://api.digikala.com/v1/rate-review/products/"
 
 # ==========================
-# تابع کمکی برای متن خوانا از نظرات
+# Helper: build readable review text
 # ==========================
 def build_readable_reviews(comments):
     lines = []
@@ -35,7 +35,7 @@ def build_readable_reviews(comments):
     return "\n".join(lines) if lines else "بدون نظر ثبت‌شده."
 
 # ==========================
-# بررسی ستون در جدول
+# Check column existence in table
 # ==========================
 def ensure_column(model, column_name):
     inspector = inspect(engine)
@@ -46,7 +46,7 @@ def ensure_column(model, column_name):
         print(f"ℹ️ ستون {column_name} در جدول {model.__tablename__} موجود است.")
 
 # ==========================
-# جمع‌آوری محصولات و رنگ‌ها
+# Collect products and colors
 # ==========================
 def fetch_and_store_products(api_url, product_model, color_model, max_pages=2):
     session: Session = SessionLocal()
@@ -59,7 +59,7 @@ def fetch_and_store_products(api_url, product_model, color_model, max_pages=2):
             r.raise_for_status()
             data = r.json()
             
-            # بررسی ساختار داده‌ها
+            # Check data structure
             products_list = []
             data_content = data.get("data", {})
             if isinstance(data_content, dict):
@@ -85,7 +85,7 @@ def fetch_and_store_products(api_url, product_model, color_model, max_pages=2):
                 if not (pid and title_fa and relative_url and selling_price):
                     continue
 
-                # ایجاد یا آپدیت محصول
+                # Create or update product
                 db_product = session.query(product_model).filter_by(product_id=pid).first()
                 if not db_product:
                     db_product = product_model(
@@ -101,7 +101,7 @@ def fetch_and_store_products(api_url, product_model, color_model, max_pages=2):
                     db_product.relative_url = f"https://www.digikala.com{relative_url}"
                     db_product.selling_price = selling_price
 
-                # ذخیره رنگ‌ها
+                # Store colors
                 colors = p.get("colors", [])
                 for c in colors:
                     color_title = c.get("title")
@@ -119,7 +119,7 @@ def fetch_and_store_products(api_url, product_model, color_model, max_pages=2):
     print(f"✨ جمع‌آوری محصولات و رنگ‌ها پایان یافت. مجموع محصولات جدید: {total_added}")
 
 # ==========================
-# جمع‌آوری مشخصات و نظرات
+# Collect specifications and reviews
 # ==========================
 def fetch_full_product_data(product_model, color_model, details_api, reviews_api, delay_specs=1, delay_reviews=1, max_pages=2):
     session: Session = SessionLocal()
@@ -130,13 +130,13 @@ def fetch_full_product_data(product_model, color_model, details_api, reviews_api
         pid = product.product_id
         print(f"\n({idx}/{len(products)}) پردازش محصول {pid} ...")
 
-        # دریافت جزئیات محصول
+    # Fetch product details
         try:
             r = requests.get(f"{details_api}{pid}/", headers=HEADERS, timeout=10)
             r.raise_for_status()
             data = r.json()
 
-            # ذخیره رنگ‌ها از جزئیات
+            # Store colors from details
             colors = data.get("data", {}).get("product", {}).get("colors", [])
             for c in colors:
                 title = c.get("title")
@@ -144,7 +144,7 @@ def fetch_full_product_data(product_model, color_model, details_api, reviews_api
                     session.add(color_model(product_id=pid, title=title))
             session.commit()
 
-            # ذخیره مشخصات
+            # Store specifications
             specs = data.get("data", {}).get("product", {}).get("specifications", [])
             if specs and getattr(product, "specifications", None) in (None, ""):
                 product.specifications = json.dumps(specs, ensure_ascii=False)
@@ -156,7 +156,7 @@ def fetch_full_product_data(product_model, color_model, details_api, reviews_api
             print(f"❌ خطا در دریافت جزئیات محصول {pid}: {e}")
             session.rollback()
 
-        # دریافت نظرات
+    # Fetch reviews
         try:
             all_comments = []
             for page in range(1, max_pages + 1):
@@ -181,27 +181,27 @@ def fetch_full_product_data(product_model, color_model, details_api, reviews_api
     print("\n✨ عملیات کامل برای همه محصولات پایان یافت.")
 
 # ==========================
-# اجرای مستقیم
+# Direct execution
 # ==========================
 if __name__ == "__main__":
-    # ایجاد جداول در صورت عدم وجود
+    # Create tables if they don't exist
     Base.metadata.create_all(engine)
     print("✅ جدول‌ها ایجاد شدند (اگر وجود نداشتند).")
 
-    # بررسی ستون‌ها
+    # Check required columns
     ensure_column(IPHONE_PRODUCTS, "specifications")
     ensure_column(IPHONE_PRODUCTS, "reviews_text")
     ensure_column(WATCH_PRODUCTS, "specifications")
     ensure_column(WATCH_PRODUCTS, "reviews_text")
 
-    # جمع‌آوری محصولات و رنگ‌ها
+    # Collect products and colors
     print("\n=== جمع‌آوری محصولات آیفون ===")
     fetch_and_store_products(IPHONE_API, IPHONE_PRODUCTS, IPHONE_COLORS, max_pages=2)
 
     print("\n=== جمع‌آوری محصولات ساعت ===")
     fetch_and_store_products(WATCH_API, WATCH_PRODUCTS, WATCH_COLORS, max_pages=2)
 
-    # دریافت مشخصات و نظرات
+    # Fetch specifications and reviews
     print("\n=== پردازش آیفون‌ها ===")
     fetch_full_product_data(IPHONE_PRODUCTS, IPHONE_COLORS, IPHONE_DETAILS_API, IPHONE_REVIEWS_API)
 

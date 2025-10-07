@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: dastyar_agent_web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./:/app:rw
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:///./data/dastyar.db
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL=${MODEL:-gpt-4o-mini}
+    restart: unless-stopped

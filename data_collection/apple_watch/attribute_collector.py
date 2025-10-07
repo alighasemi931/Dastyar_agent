@@ -17,7 +17,7 @@ def fetch_and_save_specifications(delay=2):
     """دریافت مشخصات فنی برای هر محصول و ذخیره به‌صورت JSON در دیتابیس."""
     session: Session = SessionLocal()
     try:
-        # گرفتن لیست محصولاتی که هنوز مشخصات ندارند
+    # Get list of products that don't have specifications yet
         products = session.query(WatchProduct).filter(
             (WatchProduct.specifications == None) | (WatchProduct.specifications == "")
         ).all()
@@ -32,13 +32,13 @@ def fetch_and_save_specifications(delay=2):
                 response.raise_for_status()
                 data = response.json()
 
-                # استخراج بخش specifications
+                # Extract the 'specifications' section
                 specs = data.get("data", {}).get("product", {}).get("specifications", [])
                 if not specs:
                     print("⚠️ مشخصاتی یافت نشد.")
                     continue
 
-                # ذخیره به‌صورت رشته JSON
+                # Save as JSON string
                 specs_json = json.dumps(specs, ensure_ascii=False)
                 product.specifications = specs_json
 
@@ -52,7 +52,7 @@ def fetch_and_save_specifications(delay=2):
                 print(f"❌ خطای دیگر برای {product.product_id}: {e}")
                 session.rollback()
 
-            # جلوگیری از بلاک شدن
+            # Prevent being blocked (sleep)
             time.sleep(delay)
 
     finally:

@@ -4,7 +4,7 @@ import time
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
-# --- تنظیمات ---
+# --- settings ---
 DB_URL = "sqlite:///digikala_products.db"
 API_URL_BASE = "https://api.digikala.com/v1/categories/smart-watch/brands/apple/search/"
 HEADERS = {
@@ -18,7 +18,7 @@ SessionLocal = sessionmaker(bind=engine)
 
 
 # -----------------------
-# مدل‌ها
+# models
 # -----------------------
 class WatchProduct(Base):
     __tablename__ = "watch_products"
@@ -43,7 +43,7 @@ class WatchColor(Base):
 
 
 # -----------------------
-# ساخت دیتابیس
+# build database
 # -----------------------
 def setup_database():
     Base.metadata.create_all(engine)
@@ -51,7 +51,7 @@ def setup_database():
 
 
 # -----------------------
-# دریافت و ذخیره داده‌ها
+# fetch and store data
 # -----------------------
 def get_and_save_apple_watches(max_pages=2):
     session = SessionLocal()
@@ -84,7 +84,7 @@ def get_and_save_apple_watches(max_pages=2):
                 if not (product_id and title_fa and relative_url and selling_price):
                     continue
 
-                # بررسی وجود محصول
+                # Check product existence
                 db_prod = session.query(WatchProduct).filter_by(product_id=product_id).first()
                 if not db_prod:
                     db_prod = WatchProduct(
@@ -99,7 +99,7 @@ def get_and_save_apple_watches(max_pages=2):
                     db_prod.relative_url = f"https://www.digikala.com{relative_url}"
                     db_prod.selling_price = selling_price
 
-                # رنگ‌ها
+                # colors
                 for color in prod.get("colors", []):
                     color_title = color.get("title")
                     if color_title and color_title not in [c.title for c in db_prod.colors]:
@@ -122,7 +122,7 @@ def get_and_save_apple_watches(max_pages=2):
 
 
 # -----------------------
-# نمایش محصولات ذخیره‌شده
+# display stored products
 # -----------------------
 def fetch_saved_products(limit=10):
     session = SessionLocal()
@@ -139,7 +139,7 @@ def fetch_saved_products(limit=10):
 
 
 # -----------------------
-# اجرای Pipeline
+# run pipeline
 # -----------------------
 if __name__ == "__main__":
     setup_database()

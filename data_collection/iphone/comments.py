@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models.model import IPhoneProduct, Base  # مدل‌هایی که قبلاً ساختیم
 
-# --- تنظیمات ---
+# --- settings ---
 DB_NAME = "sqlite:///digikala_products.db"
 REVIEWS_API_BASE = "https://api.digikala.com/v1/rate-review/products/"
 HEADERS = {
@@ -17,7 +17,7 @@ engine = create_engine(DB_NAME)
 SessionLocal = sessionmaker(bind=engine)
 
 # ----------------------------
-#  تابع تبدیل نظرات به متن
+#  function to convert comments to text
 # ----------------------------
 def build_readable_reviews(comments):
     """لیست نظرات را به رشته‌ی خوانا تبدیل می‌کند."""
@@ -34,7 +34,7 @@ def build_readable_reviews(comments):
 
 
 # ----------------------------
-#  تابع اصلی دریافت و ذخیره
+#  main function to fetch and store
 # ----------------------------
 def fetch_and_store_all_reviews(delay=1, max_pages=2):
     """دریافت نظرات تمام آیفون‌ها و ذخیره در ستون reviews_text."""
@@ -64,7 +64,7 @@ def fetch_and_store_all_reviews(delay=1, max_pages=2):
                 print(f"  ❌ خطا در دریافت نظرات صفحه {page} برای محصول {product_id}: {e}")
                 break
 
-        # تبدیل و ذخیره در ORM
+    # Convert and store in ORM
         readable_reviews = build_readable_reviews(all_comments)
         product.reviews_text = readable_reviews
 
@@ -82,9 +82,9 @@ def fetch_and_store_all_reviews(delay=1, max_pages=2):
 
 
 # ----------------------------
-#  اجرای مستقیم
+#  direct execution
 # ----------------------------
 if __name__ == "__main__":
-    # اگر ستون reviews_text در مدل موجود نیست، ساخت جداول را تضمین می‌کنیم
+    # Ensure tables exist if 'reviews_text' column is missing in model
     Base.metadata.create_all(engine)
     fetch_and_store_all_reviews(delay=1, max_pages=2)

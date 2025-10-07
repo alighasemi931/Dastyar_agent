@@ -52,7 +52,7 @@ def fetch_and_store_all_reviews(delay=1, max_pages=2):
                     print(f"  ❌ خطا در دریافت نظرات صفحه {page} برای محصول {product.product_id}: {e}")
                     break
 
-            # ذخیره نظرات به صورت خوانا
+            # Save reviews as readable text
             product.reviews_text = build_readable_reviews(all_comments)
             try:
                 session.commit()

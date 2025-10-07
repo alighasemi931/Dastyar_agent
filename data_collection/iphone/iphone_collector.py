@@ -4,7 +4,7 @@ import time
 from sqlalchemy import Column, Integer, String, Text, ForeignKey, create_engine
 from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 
-# --- تنظیمات ---
+# --- settings ---
 DB_NAME = "sqlite:///digikala_products.db"
 API_URL_BASE = "https://api.digikala.com/v1/categories/mobile-phone/brands/apple/search/"
 HEADERS = {
@@ -15,7 +15,7 @@ HEADERS = {
 Base = declarative_base()
 
 # -----------------------
-#  مدل‌ها (ORM)
+#  models (ORM)
 # -----------------------
 class IPhoneProduct(Base):
     __tablename__ = "iphone_products"
@@ -40,7 +40,7 @@ class IPhoneColor(Base):
 
 
 # -----------------------
-#  راه‌اندازی دیتابیس
+#  database setup
 # -----------------------
 engine = create_engine(DB_NAME)
 SessionLocal = sessionmaker(bind=engine)
@@ -51,7 +51,7 @@ def setup_database():
 
 
 # -----------------------
-#  دریافت و ذخیره داده‌ها
+#  fetch and store data
 # -----------------------
 def get_and_save_apple_mobiles(max_pages=5):
     session = SessionLocal()
@@ -89,7 +89,7 @@ def get_and_save_apple_mobiles(max_pages=5):
                 if not (product_id and title_fa and relative_url and selling_price):
                     continue
 
-                # بررسی وجود محصول (برای به‌روزرسانی یا ایجاد)
+                # Check product existence (for update or create)
                 db_product = session.query(IPhoneProduct).filter_by(product_id=product_id).first()
                 if not db_product:
                     db_product = IPhoneProduct(
@@ -104,7 +104,7 @@ def get_and_save_apple_mobiles(max_pages=5):
                     db_product.relative_url = f"https://www.digikala.com{relative_url}"
                     db_product.selling_price = selling_price
 
-                # رنگ‌ها
+                # colors
                 colors = product.get("colors", [])
                 for color in colors:
                     color_title = color.get("title")
@@ -128,7 +128,7 @@ def get_and_save_apple_mobiles(max_pages=5):
 
 
 # -----------------------
-#  نمایش داده‌های ذخیره‌شده
+#  display stored data
 # -----------------------
 def fetch_saved_products_with_colors(limit=10):
     session = SessionLocal()
@@ -145,7 +145,7 @@ def fetch_saved_products_with_colors(limit=10):
 
 
 # -----------------------
-#  اجرای Pipeline
+#  run pipeline
 # -----------------------
 if __name__ == "__main__":
     setup_database()

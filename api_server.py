@@ -23,7 +23,7 @@ app = FastAPI(title="Dastyar AI Chat API")
 # CORS (اختیاری)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # یا فقط دامنه‌ی فرانت اند خودت
+    allow_origins=["*"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -78,16 +78,16 @@ agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
 # ----------------------------
 @app.post("/chat", response_model=ChatResponse)
 def chat_endpoint(data: ChatRequest = Body(...)):
-    # ایجاد یا دریافت session
+    # session
     session_id = data.session_id or get_or_create_session("api_session")
     chat_history = load_messages(session_id) or []
 
-    # اضافه کردن پیام کاربر
+    
     human_msg = HumanMessage(content=data.message, type="human")
     chat_history.append(human_msg)
     save_message(session_id, "human", data.message)
 
-    # اجرای agent
+    # Run agent
     response = agent_executor.invoke({
         "input": data.message,
         "chat_history": chat_history

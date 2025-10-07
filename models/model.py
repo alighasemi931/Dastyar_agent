@@ -55,41 +55,41 @@ class WATCH_COLORS(Base):
     watch = relationship("WATCH_PRODUCTS", back_populates="colors")
 
 
-class Session(Base):
-    __tablename__ = 'sessions'
-    id = Column(Integer, primary_key=True)
-    mode = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+# class Session(Base):
+#     __tablename__ = 'sessions'
+#     id = Column(Integer, primary_key=True)
+#     mode = Column(String, nullable=False)
+#     created_at = Column(DateTime, default=datetime.utcnow)
 
-    messages = relationship("Message", back_populates="session", cascade="all, delete-orphan")
-
-
-class Message(Base):
-    __tablename__ = 'messages'
-    id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey('sessions.id'), nullable=False)
-    role = Column(String, nullable=False)
-    content = Column(Text, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
-
-    session = relationship("Session", back_populates="messages")
+#     messages = relationship("Message", back_populates="session", cascade="all, delete-orphan")
 
 
-# -----------------------------
-# Pydantic Models
-# -----------------------------
+# class Message(Base):
+#     __tablename__ = 'messages'
+#     id = Column(Integer, primary_key=True)
+#     session_id = Column(Integer, ForeignKey('sessions.id'), nullable=False)
+#     role = Column(String, nullable=False)
+#     content = Column(Text, nullable=False)
+#     timestamp = Column(DateTime, default=datetime.utcnow)
 
-class SkillData(BaseModel):
-    name: str
+#     session = relationship("Session", back_populates="messages")
 
 
-class ProfileData(BaseModel):
-    full_name: str
-    headline: str
-    summary: str
-    skills: List[SkillData]
+# # -----------------------------
+# # Pydantic Models
+# # -----------------------------
 
-    model_config = ConfigDict(from_attributes=True)
+# class SkillData(BaseModel):
+#     name: str
+
+
+# class ProfileData(BaseModel):
+#     full_name: str
+#     headline: str
+#     summary: str
+#     skills: List[SkillData]
+
+#     model_config = ConfigDict(from_attributes=True)
 
 
 class Session(Base):
