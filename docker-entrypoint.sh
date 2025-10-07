@@ -1,19 +1,11 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
-# Ensure data dir exists and is writable
-mkdir -p /app/data
-chown -R root:root /app/data || true
+# 1. دیتابیس را آماده کن
+python scripts/data_collector.py
 
-# Initialize DB (calls init_db in databases.database)
-python - <<'PY'
-from databases.database import init_db
-try:
-    init_db()
-    print("✅ Database initialized")
-except Exception as e:
-    print("⚠️ Database init failed:", e)
-PY
+# 2. ساخت وکتور DB
+python scripts/build_vector_db.py
 
-# Execute user CMD (uvicorn ...) or default
-exec "$@"
+# 3. اجرای سرور
+exec uvicorn api_server:app --host 0.0.0.0 --port 8000

@@ -1,4 +1,5 @@
 # api_server.py
+# api_server_async.py
 from fastapi import FastAPI, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -9,8 +10,9 @@ from langchain_openai import ChatOpenAI
 from langchain.agents import AgentExecutor, create_openai_tools_agent
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-
+import asyncio
 import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from services.agent_creator import creator_tools
 from services.manage_sessions import get_or_create_session, load_messages, save_message
@@ -20,10 +22,10 @@ load_dotenv()
 
 app = FastAPI(title="Dastyar AI Chat API")
 
-# CORS 
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,28 +41,19 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     session_id: str
     reply: str
-    history: List[dict]  # [{'type': 'human'/'ai', 'content': '...'}]
+    history: List[dict]
 
 # ----------------------------
-# Prompt 
+# Prompt
 # ----------------------------
 service_prompt = """
 تو یک دستیار هوش مصنوعیهستی که به کاربر کمک می‌کنی محصول مناسب خود را در دیجی‌کالا (گوشی‌های آیفون یا اپل واچ) پیدا کند.
 وظیفه تو این است که با پرسیدن سوالات دقیق و گام به گام، محصول موردنظر کاربر را بازیابی کنید و به سوالات خاصی در مورد آن پاسخ بدهی.
-
-قوانین:
-1. در هر لحظه فقط یک سوال بپرس و مکالمه را فعالانه هدایت کن.
-2. با پرسیدن محصول مورد نظر ('آیفون' یا 'اپل واچ') شروع کن.
-3. مکالمه را به طور فعال هدایت کنید.
-4. پس از تأیید محصول، از کاربر بخواه فیلترهای مورد نظرش (مثل رنگ یا محدوده قیمت) را اعلام کند.
-5. از کاربر بپرس که آیا نیاز به دانستن نظرات کاربران دارد یا خیر.
-6. از کاربر بپرس که آیا نیاز به مقایسه بین دو محصول را با استفاده از نظرات دارد یا خیر.
-7. از ابزارهای موجود (Tools) برای جستجوی داده‌ها و ارائه نتایج استفاده کن.
-8. نتایج را به صورت شفاف و کاربرپسند ارائه بده.
+...
 """
 
 # ----------------------------
-#  Agent ,AgentExecutor
+# Agent ,AgentExecutor
 # ----------------------------
 llm = ChatOpenAI(model=os.getenv("MODEL", "gpt-4o-mini"), temperature=0.7)
 prompt = ChatPromptTemplate.from_messages([
@@ -77,34 +70,28 @@ agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=False)
 # Endpoint /chat
 # ----------------------------
 @app.post("/chat", response_model=ChatResponse)
-def chat_endpoint(data: ChatRequest = Body(...)):
+async def chat_endpoint(data: ChatRequest = Body(...)):
     # session
     session_id = data.session_id or get_or_create_session("api_session")
-    chat_history = load_messages(session_id) or []
+    chat_history = await asyncio.to_thread(load_messages, session_id) or []
 
-    
     human_msg = HumanMessage(content=data.message, type="human")
     chat_history.append(human_msg)
-    save_message(session_id, "human", data.message)
+    await asyncio.to_thread(save_message, session_id, "human", data.message)
 
-    # Run agent
-    response = agent_executor.invoke({
+    # Run agent (async)
+    response = await agent_executor.ainvoke({
         "input": data.message,
         "chat_history": chat_history
     })
     ai_text = response.get("output") or response.get("result") or str(response)
 
-   
-    #add response to history
+    # Add AI message to history
     ai_msg = AIMessage(content=ai_text, type="ai")
     chat_history.append(ai_msg)
-    save_message(session_id, "ai", ai_text)
+    await asyncio.to_thread(save_message, session_id, "ai", ai_text)
 
-   
-    #add history as list of dicts
-    history_serializable = [
-        {"type": msg.type, "content": msg.content} for msg in chat_history
-    ]
+    history_serializable = [{"type": msg.type, "content": msg.content} for msg in chat_history]
 
     return ChatResponse(
         session_id=session_id,
@@ -112,6 +99,7 @@ def chat_endpoint(data: ChatRequest = Body(...)):
         history=history_serializable
     )
 
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("api_server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("api_server:app", host="0.0.0.0", port=8001,workers = 4)
